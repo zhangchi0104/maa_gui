@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fui;
-import 'package:maa_core/maa_core.dart';
 import 'package:maa_gui/controllers/maa_controller.dart';
-import 'package:maa_gui/controllers/state_controller.dart';
 import 'package:path/path.dart' as p;
 import 'package:get/get.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+import 'components/navigation_header.dart';
+import 'package:desktop_window/desktop_window.dart';
 
-final routes = {
-  "/": (context) => const MaaGuiRoot(),
-};
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await DesktopWindow.setMinWindowSize(Size(800, 600));
+  runApp(const GetMaterialApp(home: MyApp()));
+}
 
 class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -25,8 +24,14 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     Get.put(InstanceController(p.join(p.current, 'runtime')));
-    Get.put(StateController());
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    final controller = Get.find<InstanceController>();
+    controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -74,6 +79,41 @@ class MaaGuiRoot extends StatefulWidget {
 
 class _MaaGuiRootState extends State<MaaGuiRoot> {
   int activeIndex = 0;
+  List<fui.NavigationPaneItem> get paneItems => [
+        fui.PaneItemSeparator(),
+        fui.PaneItem(
+          icon: const Icon(fui.FluentIcons.check_list),
+          title: const Text('一键长草'),
+        ),
+        fui.PaneItem(
+          icon: const Icon(fui.FluentIcons.check_list),
+          title: const Text('抄作业'),
+        ),
+        fui.PaneItem(
+          icon: const Icon(fui.FluentIcons.check_list),
+          title: const Text('公共招募'),
+        ),
+      ];
+
+  fui.NavigationPane get navigationPane => fui.NavigationPane(
+        displayMode: fui.PaneDisplayMode.auto,
+        selected: activeIndex,
+        onChanged: (index) {
+          setState(() {
+            activeIndex = index;
+          });
+        },
+        header: const NavigationHeader(),
+        items: paneItems,
+        footerItems: [
+          fui.PaneItemSeparator(),
+          fui.PaneItem(
+            icon: const Icon(fui.FluentIcons.settings),
+            title: const Text('设置'),
+          ),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     final typography = fui.FluentTheme.of(context).typography;
@@ -82,62 +122,7 @@ class _MaaGuiRootState extends State<MaaGuiRoot> {
         title: Text("MeoAssistant", style: typography.title),
         leading: const FlutterLogo(size: 50),
       ),
-      pane: fui.NavigationPane(
-          displayMode: fui.PaneDisplayMode.auto,
-          selected: activeIndex,
-          onChanged: (index) {
-            setState(() {
-              activeIndex = index;
-            });
-          },
-          header: Row(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: fui.IconButton(
-                  icon: const Icon(fui.FluentIcons.refresh),
-                  onPressed: () {},
-                ),
-              ),
-              Expanded(
-                child: fui.Combobox<String>(
-                  value: "Looooooooooong",
-                  items: const [
-                    fui.ComboboxItem<String>(
-                      child: Text('Looooooooooong'),
-                      value: "Looooooooooong",
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: fui.IconButton(
-                  icon: Icon(fui.FluentIcons.add),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          ),
-          items: [
-            fui.PaneItemSeparator(),
-            fui.PaneItem(
-              icon: const Icon(fui.FluentIcons.check_list),
-              title: const Text('任务'),
-            ),
-            fui.PaneItem(
-              icon: const Icon(fui.FluentIcons.check_list),
-              title: const Text('抄作业'),
-            ),
-          ],
-          footerItems: [
-            fui.PaneItemSeparator(),
-            fui.PaneItem(
-              icon: const Icon(fui.FluentIcons.settings),
-              title: const Text('Settings'),
-            ),
-          ]),
+      pane: navigationPane,
     );
   }
 }

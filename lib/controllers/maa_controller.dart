@@ -3,15 +3,32 @@ import 'package:maa_core/maa_core.dart';
 import 'dart:async';
 import 'dart:isolate';
 
+typedef InstanceConnectionConfig = Map<String, String>;
+
 class InstanceController extends GetxController {
   final String _libDir;
   InstanceController(this._libDir);
-  late SendPort _sendPort;
   late Isolate _maaThread;
+  late SendPort _sendPort;
   final Map<String, MaaCore> _isolatedInstances = {};
-  final RxList<String> _instanceNames = <String>[].obs;
 
-  RxList<String> get instanceNames => _instanceNames;
+  final _instanceConfigs = <String, InstanceConnectionConfig>{};
+  List<String> get instanceNames => _instanceConfigs.keys.toList();
+  String get currentInstance {
+    if (_currentInstance == '' && instanceNames.isEmpty) {
+      return '当前无实例';
+    } else if (_currentInstance == '') {
+      return instanceNames[0];
+    }
+    return _currentInstance;
+  }
+
+  set currentInstance(String value) {
+    _currentInstance = value;
+    update();
+  }
+
+  String _currentInstance = '';
 
   Future<void> initialize() async {
     ReceivePort receivePort = ReceivePort();
@@ -45,15 +62,11 @@ class InstanceController extends GetxController {
         replyTo.send(true);
         break;
       case 'createInstance':
-        String adb = args['adb'];
-        String address = args['address'];
-        String config = args['config'];
         String alias = args['alias'];
-        SendPort? subscripionPort = args['port'];
-        _isolatedInstances[alias] = subscripionPort == null
+        SendPort? subscriptionPort = args['port'];
+        _isolatedInstances[alias] = subscriptionPort == null
             ? MaaCore(_libDir)
-            : MaaCore(_libDir, (msg) => {subscripionPort.send(msg)});
-        _isolatedInstances[alias]!.connect(adb, address, config);
+            : MaaCore(_libDir, (msg) => {subscriptionPort.send(msg)});
         replyTo.send(alias);
         break;
       case 'getAllInstanceNames':
@@ -90,23 +103,32 @@ class InstanceController extends GetxController {
       });
     }
     String res = await sendThenReceive('createInstance', {
+      'alias': alias ?? address,
+      'port': receivePort?.sendPort,
+    });
+    _instanceConfigs[alias ?? address] = {
       'adb': adb,
       'address': address,
       'config': config,
-      'alias': alias ?? 'address',
-      'port': receivePort?.sendPort,
-    });
-    _instanceNames.add(res);
+    };
     return res;
   }
 
   Future<bool> removeInstance(String name) async {
-    if (_instanceNames.contains(name)) {
+    if (_instanceConfigs.keys.contains(name)) {
       bool res = await sendThenReceive('removeInstance', {
         'name': name,
       });
+      _instanceConfigs.remove(name);
       return res;
     }
     return false;
+  }
+
+  void close() async {
+    for (final instance in instanceNames) {
+      await removeInstance(instance);
+    }
+    _maaThread.kill();
   }
 }
