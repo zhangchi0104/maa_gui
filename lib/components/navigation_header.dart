@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fui;
 import 'package:get/get.dart';
 import 'package:maa_gui/controllers/maa_controller.dart';
+import 'package:maa_gui/controllers/side_pane_controller.dart';
+
 import 'package:maa_gui/dialogs/new_instance_dialog.dart';
 
 class NavigationHeader extends StatelessWidget {
@@ -74,13 +76,14 @@ class _InstanceSelectorState extends State<InstanceSelector> {
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<InstanceManagerService>(
-      builder: (controller) => fui.Combobox<String>(
+    final controller = Get.find<SidePaneController>();
+    return Obx(
+     () => fui.Combobox<String>(
         value: controller.instanceNames.isEmpty
             ? "当前无实例"
-            : controller.currentInstance,
+            : controller.currentInstance.value,
         isExpanded: expanded,
-        onChanged: (v) => {controller.currentInstance = v!},
+        onChanged: (v) => {controller.currentInstance.value = v!},
         items: buildComboboxItems(controller.instanceNames),
         onTap: () {
           setState(() {

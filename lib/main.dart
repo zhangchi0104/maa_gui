@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 
 import 'components/navigation_header.dart';
 import 'package:desktop_window/desktop_window.dart';
+import 'package:maa_gui/controllers/side_pane_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     Get.put(InstanceManagerService(p.join(p.current, 'runtime')));
+    initUIControllers();
     super.initState();
   }
 
@@ -83,15 +85,8 @@ class LoadingScreen extends StatelessWidget {
   }
 }
 
-class MaaGuiRoot extends StatefulWidget {
+class MaaGuiRoot extends StatelessWidget {
   const MaaGuiRoot({Key? key}) : super(key: key);
-
-  @override
-  State<MaaGuiRoot> createState() => _MaaGuiRootState();
-}
-
-class _MaaGuiRootState extends State<MaaGuiRoot> {
-  int activeIndex = 0;
   List<fui.NavigationPaneItem> get paneItems => [
         fui.PaneItemSeparator(),
         fui.PaneItem(
@@ -108,34 +103,41 @@ class _MaaGuiRootState extends State<MaaGuiRoot> {
         ),
       ];
 
-  fui.NavigationPane get navigationPane => fui.NavigationPane(
-        displayMode: fui.PaneDisplayMode.auto,
-        selected: activeIndex,
-        onChanged: (index) {
-          setState(() {
-            activeIndex = index;
-          });
-        },
-        header: const NavigationHeader(),
-        items: paneItems,
-        footerItems: [
-          fui.PaneItemSeparator(),
-          fui.PaneItem(
-            icon: const Icon(fui.FluentIcons.settings),
-            title: const Text('设置'),
-          ),
-        ],
-      );
+  fui.NavigationPane buildNavigationPane(SidePaneController controller) {
+    return fui.NavigationPane(
+      displayMode: fui.PaneDisplayMode.auto,
+      selected: controller.selecedIndex.value,
+      onChanged: (index) {
+        controller.selecedIndex.value = index;
+      },
+      header: const NavigationHeader(),
+      items: paneItems,
+      footerItems: [
+        fui.PaneItemSeparator(),
+        fui.PaneItem(
+          icon: const Icon(fui.FluentIcons.settings),
+          title: const Text('设置'),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final typography = fui.FluentTheme.of(context).typography;
-    return fui.NavigationView(
-      appBar: fui.NavigationAppBar(
-        title: Text("MeoAssistant", style: typography.title),
-        leading: const FlutterLogo(size: 50),
+    final controller = Get.find<SidePaneController>();
+    return Obx(
+      () => fui.NavigationView(
+        appBar: fui.NavigationAppBar(
+          title: Text("MeoAssistant", style: typography.title),
+          leading: const FlutterLogo(size: 50),
+        ),
+        pane: buildNavigationPane(controller),
       ),
-      pane: navigationPane,
     );
   }
+}
+
+void initUIControllers() {
+  Get.put(SidePaneController());
 }

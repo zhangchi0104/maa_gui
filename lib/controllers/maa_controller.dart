@@ -3,9 +3,17 @@ import 'package:maa_core/maa_core.dart';
 import 'dart:async';
 import 'dart:isolate';
 
-typedef InstanceConnectionConfig = Map<String, String>;
+enum ConnectionStatus {
+  notConnected,
+  failed,
+  connected,
+  running,
+}
 
-class InstanceManagerService extends GetxController with GetxServiceMixin {
+typedef InstanceConnectionConfig = Map<String, String>;
+typedef InstanceStatus = Map<String, ConnectionStatus>;
+
+class InstanceManagerService extends GetxService {
   final String _libDir;
   InstanceManagerService(this._libDir);
   late Isolate _maaThread;
@@ -14,21 +22,6 @@ class InstanceManagerService extends GetxController with GetxServiceMixin {
 
   final _instanceConfigs = <String, InstanceConnectionConfig>{};
   List<String> get instanceNames => _instanceConfigs.keys.toList();
-  String get currentInstance {
-    if (_currentInstance == '' && instanceNames.isEmpty) {
-      return '当前无实例';
-    } else if (_currentInstance == '') {
-      return instanceNames[0];
-    }
-    return _currentInstance;
-  }
-
-  set currentInstance(String value) {
-    _currentInstance = value;
-    update();
-  }
-
-  String _currentInstance = '';
 
   Future<void> initialize() async {
     ReceivePort receivePort = ReceivePort();
@@ -37,9 +30,10 @@ class InstanceManagerService extends GetxController with GetxServiceMixin {
   }
 
   Future<void> initMaaCore([bool reload = false]) async {
-    bool res = await sendThenReceive('init', {'reload': reload, 'dir': _libDir});
+    bool res =
+        await sendThenReceive('init', {'reload': reload, 'dir': _libDir});
     if (!res) {
-      throw Exception('Failed to initialize MaaCore'); 
+      throw Exception('Failed to initialize MaaCore');
     }
   }
 
@@ -60,15 +54,15 @@ class InstanceManagerService extends GetxController with GetxServiceMixin {
     // handleMessage is in spawnd isolate
     switch (event) {
       case "init":
-      try { 
-        MaaCore.init(
-          args['dir'] as String,
-          reloadResource: args['reload'] as bool,
-        );
-        replyTo.send(true);
-      } on Exception  catch (err) {
-        replyTo.send(false); 
-      }
+        try {
+          MaaCore.init(
+            args['dir'] as String,
+            reloadResource: args['reload'] as bool,
+          );
+          replyTo.send(true);
+        } on Exception catch (err) {
+          replyTo.send(false);
+        }
         break;
       case 'createInstance':
         String alias = args['alias'];
@@ -134,7 +128,6 @@ class InstanceManagerService extends GetxController with GetxServiceMixin {
     return false;
   }
 
-  
   void close() async {
     for (final instance in instanceNames) {
       await removeInstance(instance);
