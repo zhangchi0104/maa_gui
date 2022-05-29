@@ -5,9 +5,9 @@ import 'dart:isolate';
 
 typedef InstanceConnectionConfig = Map<String, String>;
 
-class InstanceController extends GetxController {
+class InstanceManagerService extends GetxController with GetxServiceMixin {
   final String _libDir;
-  InstanceController(this._libDir);
+  InstanceManagerService(this._libDir);
   late Isolate _maaThread;
   late SendPort _sendPort;
   final Map<String, MaaCore> _isolatedInstances = {};
@@ -37,7 +37,10 @@ class InstanceController extends GetxController {
   }
 
   Future<void> initMaaCore([bool reload = false]) async {
-    await sendThenReceive('init', {'reload': reload, 'dir': _libDir});
+    bool res = await sendThenReceive('init', {'reload': reload, 'dir': _libDir});
+    if (!res) {
+      throw Exception('Failed to initialize MaaCore'); 
+    }
   }
 
   Future<void> _doInitialization(SendPort sendPort) async {
@@ -57,9 +60,15 @@ class InstanceController extends GetxController {
     // handleMessage is in spawnd isolate
     switch (event) {
       case "init":
-        MaaCore.init(args['dir'] as String,
-            reloadResource: args['reload'] as bool);
+      try { 
+        MaaCore.init(
+          args['dir'] as String,
+          reloadResource: args['reload'] as bool,
+        );
         replyTo.send(true);
+      } on Exception  catch (err) {
+        replyTo.send(false); 
+      }
         break;
       case 'createInstance':
         String alias = args['alias'];
@@ -125,6 +134,7 @@ class InstanceController extends GetxController {
     return false;
   }
 
+  
   void close() async {
     for (final instance in instanceNames) {
       await removeInstance(instance);

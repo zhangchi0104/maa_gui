@@ -21,16 +21,17 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final hasError = false;
   @override
   void initState() {
-    Get.put(InstanceController(p.join(p.current, 'runtime')));
+    Get.put(InstanceManagerService(p.join(p.current, 'runtime')));
     super.initState();
   }
 
   @override
   void dispose() {
-    final controller = Get.find<InstanceController>();
-    controller.dispose();
+    final controller = Get.find<InstanceManagerService>();
+    controller.close();
     super.dispose();
   }
 
@@ -39,15 +40,27 @@ class _MyAppState extends State<MyApp> {
     return fui.FluentApp(
       title: "Maa Flutter",
       home: FutureBuilder<void>(future: Future(() async {
-        final InstanceController controller = Get.find();
+        final InstanceManagerService controller = Get.find();
         await controller.initialize();
         await controller.initMaaCore();
       }), builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          print('has error');
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Get.snackbar(
+              "Error",
+              "核心资源加载失败",
+              duration: Duration(seconds: 3),
+              icon: const Icon(Icons.error),
+              isDismissible: true,
+              margin: EdgeInsets.all(8),
+            );
+          });
+        }
         if (snapshot.connectionState == ConnectionState.done) {
           return const MaaGuiRoot();
-        } else {
-          return const LoadingScreen();
         }
+        return const LoadingScreen();
       }),
     );
   }

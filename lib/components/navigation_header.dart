@@ -74,7 +74,7 @@ class _InstanceSelectorState extends State<InstanceSelector> {
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<InstanceController>(
+    return GetBuilder<InstanceManagerService>(
       builder: (controller) => fui.Combobox<String>(
         value: controller.instanceNames.isEmpty
             ? "当前无实例"
